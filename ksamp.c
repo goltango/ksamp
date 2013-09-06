@@ -2,6 +2,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <time.h>
+#include<stdlib.h>
 #define BUFFSIZE 100
 
 void validsOpt();
@@ -14,7 +15,9 @@ void showMeminfo();
 void infoEstadistica();
 void parser(char txt[BUFFSIZE], char x);
 void initSystemDate();
-void printSystemInitTime();
+void infoPedidosDisco();
+void match(char* filename, char* matched, char* matchStr);
+void infoDisco(char **argv, char *argumento, int puntero);
 
 int main(int argc, char *argv[]) {
 	int opcion;
@@ -31,7 +34,6 @@ int main(int argc, char *argv[]) {
 				if(argc == 2){
 					defaultInfo();
 					showStats();
-					printSystemInitTime();
 					initSystemDate();
 				}else{
 					validsOpt();
@@ -41,7 +43,11 @@ int main(int argc, char *argv[]) {
 			case 'l':
 				if(argc == 4){
                     defaultInfo();
+					showStats();
+					initSystemDate();
                     showMeminfo();
+                    infoPedidosDisco();
+                    infoDisco(argv,optarg,optind);
 				}else{
 					validsOpt();
 				}
@@ -251,8 +257,73 @@ void initSystemDate(){
 pclose(in);
 }
 
-void printSystemInitTime(){
+/**
+ * Muestra peticiones totales a disco
+ */
+void infoPedidosDisco(){
+	char matched[256];
+	unsigned int lecturas, escrituras, pedidos;
 
+	match("/proc/diskstats", matched, "sda");
+	sscanf(matched, "sda %u", &lecturas);
+	sscanf(matched, "sda %*u %*u %*u %*u %u", &escrituras);
+	pedidos = escrituras + lecturas;
+	printf("Cantidad de peticiones a disco: %u\n", pedidos);
+	return;
+}
+
+/**
+ * En matched, coloca la linea que comienza con la cadena matchStr.
+ * @param filename Archivo donde se buscara la linea
+ * @param matched Almacena la linea que comienza con la cadena matchStr.
+ * @param matchStr Cadena a buscar.
+ */
+void match(char* filename, char* matched, char* matchStr){
+	FILE* fd;
+	char* match = NULL;
+	char buffer[500];
+	fd = fopen(filename,"r");
+
+	while(feof(fd)==0){
+		fgets(buffer, 500, fd);
+		match = strstr(buffer, matchStr);
+		if(match!=NULL)
+			break;
+	}
+
+	fclose(fd);
+	strcpy(matched,match);
+	return;
+}
+
+/**
+ * Obtiene informacion sobre el uso del disco del archivo /proc/loadavg
+ */
+void infoDisco(char **argv, char *argumento, int puntero){
+	FILE *archivo;
+	int intervalo, tiempo;
+	char aux[BUFFSIZE];
+	float promedio;
+
+	tiempo=atoi(*(argv+puntero));
+
+	while(tiempo>0){
+		if( (archivo=fopen("/proc/loadavg","r")) == NULL ){
+			printf("\nError al abrir el archivo: /proc/meminfo\n");
+			exit(1);
+		}
+
+		fscanf(archivo, "%s", aux);
+		promedio = atof(aux);
+		printf("\nPromedio de carga en el último minuto: %.2f",promedio);
+		intervalo=atoi(argumento);
+
+		printf("\n[Pausa de %d segundos]",intervalo);
+		printf("\n");
+		sleep(intervalo);
+		fclose(archivo);
+		tiempo=tiempo-intervalo;
+	}
 }
 /**
  * Modifica parte de una cadena despues de un determinado caracter x

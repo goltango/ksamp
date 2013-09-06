@@ -14,6 +14,7 @@ void showMeminfo();
 void infoEstadistica();
 void parser(char txt[BUFFSIZE], char x);
 void initSystemDate();
+void printSystemInitTime();
 
 int main(int argc, char *argv[]) {
 	int opcion;
@@ -30,11 +31,8 @@ int main(int argc, char *argv[]) {
 				if(argc == 2){
 					defaultInfo();
 					showStats();
+					printSystemInitTime();
 					initSystemDate();
-
-
-
-                    showMeminfo();
 				}else{
 					validsOpt();
 				}
@@ -42,7 +40,8 @@ int main(int argc, char *argv[]) {
 
 			case 'l':
 				if(argc == 4){
-                    printf("case L\n");
+                    defaultInfo();
+                    showMeminfo();
 				}else{
 					validsOpt();
 				}
@@ -240,12 +239,19 @@ void showMeminfo(){
 * Muestra la fecha y hora de inicio del sistema.
 */
 void initSystemDate(){
-    time_t mytime;
+    FILE *in;
+    extern FILE *popen();
+    char buff[BUFFSIZE];
 
-    mytime = time(NULL);
+    in = popen("date -d \"`cut -f1 -d. /proc/uptime` seconds ago\"", "r");
+    printf("System init time: ");
+    while(fgets(buff, sizeof(buff), in)!=NULL){
+        printf("%s", buff);
+    }
+pclose(in);
+}
 
-    printf("System init time: %s", ctime(&mytime));
-
+void printSystemInitTime(){
 
 }
 /**

@@ -1,30 +1,35 @@
 #include <stdio.h>
+#include <getopt.h>
+#include <string.h>
 #define BUFFSIZE 100
 
 void validsOpt();
+void defaultInfo();
 void showCpuinfo();
 void showVersion();
 void showUptime();
 void showStats();
 void showMeminfo();
+void infoEstadistica();
+void parser(char txt[BUFFSIZE], char x);
 
 int main(int argc, char *argv[]) {
 	int opcion;
 
+	printf("KSAMP SOFTWARE \n==================================================\n");
+
     if (argc == 1){
-		printf("case argc1\n\n");
-		showCpuinfo();
-		showVersion();
-		showUptime();
-		showStats();
-		showMeminfo();
+		defaultInfo();
+
 	}
 
 	 while ((opcion = getopt (argc, argv, "sl:")) != -1){
 		switch (opcion) {
 			case 's':
 				if(argc == 2){
-					printf("case S\n");
+					defaultInfo();
+					showStats();
+                    showMeminfo();
 				}else{
 					validsOpt();
 				}
@@ -45,15 +50,9 @@ int main(int argc, char *argv[]) {
 	}
 	printf("\n");
 
-
-
-
-
-
-
     return 0;
 }
-/*
+/**
 * Funcion para ser llamada en cas de ingreso erroneo de opciones. Muestra en pantalla las opciones validas.
 */
 void validsOpt(){
@@ -62,7 +61,16 @@ void validsOpt(){
 	printf("\n\n");
 }
 
-/*
+/**
+*Muestra informacion referente a la parte B de la informacion.
+*/
+void defaultInfo(){
+    showCpuinfo();
+    showVersion();
+    showUptime();
+}
+
+/**
 * /proc/cpuinfo
 * This  is  a collection of CPU and system architecture dependent items, for each supported architecture a different list.
 * Two common entries are processor which gives CPU number and bogomips; a system constant that is calculated during kernel
@@ -74,10 +82,6 @@ void showCpuinfo(){
 	char cpuinfo2[BUFFSIZE+1];
 	char cpuinfo3[BUFFSIZE+1];
 	char str1 [20];
-	char str2 [20];
-	char str3 [20];
-	char str4 [20];
-	char str5 [20];
 
 	fd = fopen("/proc/cpuinfo","r");
 	fgets(cpuinfo1, BUFFSIZE+1, fd);
@@ -97,7 +101,7 @@ void showCpuinfo(){
     printf("Model: %s \n",str1);
 }
 
-/*
+/**
 * /proc/version
 * This string identifies the kernel version that is currently running.
 * It includes the contents of /proc/sys/kernel/ostype, /proc/sys/kernel/osrelease
@@ -108,10 +112,6 @@ void showVersion(){
     FILE *fd;
     char version[BUFFSIZE+1];
     char str1 [20];
-	char str2 [20];
-	char str3 [20];
-	char str4 [20];
-	char str5 [20];
 
     fd = fopen("/proc/version","r");
 	fgets(version, BUFFSIZE+1, fd);
@@ -123,31 +123,33 @@ void showVersion(){
 	printf("Kernel Version: %s \n",str1);
 }
 
-/*
+/**
 * /proc/uptime
 * This file contains two numbers: the uptime of the system (seconds),
 * and the amount of time spent in idle process (seconds).
 */
 void showUptime(){
     FILE *fd;
-    char uptime[BUFFSIZE+1];
-    char str1 [20];
-	char str2 [20];
-	char str3 [20];
-	char str4 [20];
-	char str5 [20];
+	int time=0, days=0, hours=0, mins=0, secs=0;
 
 	fd = fopen("/proc/uptime", "r");
-	fgets(uptime, BUFFSIZE+1, fd);
+	fscanf(fd,"%d",&time);
+
+	days = time / 86400;
+	time = time % 86400;
+	hours  = time / 3600;
+	time = time % 3600;
+	mins = time / 60;
+	secs = time % 60;
+
 	fclose(fd);
 	fflush(fd);
 
 	//Filtra uptime y lo imprime
-	sscanf(uptime,"%s %s ", str1, str2);
-	printf("Uptime: %s %s \n", str1, str2);
+	printf("Uptime: %dd:%dh:%dm:%ds\n",days,hours,mins,secs);
 }
 
-/*
+/**
 * /proc/stat
 * kernel/system statistics.  Varies with architecture.
 * Ver https://www.kernel.org/doc/Documentation/filesystems/proc.txt (1.8)
@@ -182,10 +184,10 @@ void showStats(){
     printf("IdleTime: %s 1/100ths of a second\n",str3);
 
     //Filtra el numero de procesos creados y los imprime
-    printf("Processes: %s\n", str5);
+    printf("Processes created: %s\n", str5);
 
 }
-/*
+/**
 * /proc/meminfo
 * This file reports statistics about memory usage on the system.  It is used by free(1) to report the amount of free
 * and used memory (both physical and swap) on the system as well as the shared memory and buffers used by the kernel.
@@ -200,10 +202,6 @@ void showMeminfo(){
 	char meminfo1[BUFFSIZE+1];
 	char meminfo2[BUFFSIZE+1];
 	char str1 [20];
-	char str2 [20];
-	char str3 [20];
-	char str4 [20];
-	char str5 [20];
 
 	fd = fopen("/proc/meminfo","r");
 	fgets(meminfo1, BUFFSIZE+1, fd);
@@ -218,4 +216,28 @@ void showMeminfo(){
     //Filtra memoria libre y la imprime
     sscanf(meminfo2,"%*s %s ", str1);
     printf("FreeMem: %s Kb\n",str1);
+}
+
+/**
+ * Retorna parte de una cadena despues de un determinado caracter x
+ * @param txt[BUFF] cadena a modificar
+ * @param x caracter de limite
+ */
+
+void parser(char txt[BUFFSIZE], char x){
+	int i=0, j=0;
+
+	while( txt[i] != x )
+	{
+		i++;
+	}
+
+	for(i; i<60; i++){
+		txt[j] = txt[i];
+		j++;
+	}
+
+	for(j; j<60; j++){
+		txt[j] = ' ';
+	}
 }

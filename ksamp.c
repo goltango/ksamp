@@ -2,8 +2,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <time.h>
-#include<stdlib.h>
-#define BUFFSIZE 100
+#define BUFFSIZE 256
 
 void validsOpt();
 void defaultInfo();
@@ -14,15 +13,15 @@ void showStats();
 void showMeminfo();
 void infoEstadistica();
 void parser(char txt[BUFFSIZE], char x);
-void initSystemDate();
-void infoPedidosDisco();
-void match(char* filename, char* matched, char* matchStr);
+void uptimeSystemDate();
+void showDiskstats();
+void findStr(char* filename, char* matched, char* matchStr);
 void infoDisco(char **argv, char *argumento, int puntero);
 
 int main(int argc, char *argv[]) {
 	int opcion;
 
-	printf("KSAMP SOFTWARE \n==================================================\n");
+	printf("KSAMP SOFTWARE 1.0 \n==================================================\n");
 
     if (argc == 1){
 		defaultInfo();
@@ -34,7 +33,7 @@ int main(int argc, char *argv[]) {
 				if(argc == 2){
 					defaultInfo();
 					showStats();
-					initSystemDate();
+					uptimeSystemDate();
 				}else{
 					validsOpt();
 				}
@@ -44,9 +43,9 @@ int main(int argc, char *argv[]) {
 				if(argc == 4){
                     defaultInfo();
 					showStats();
-					initSystemDate();
+					uptimeSystemDate();
                     showMeminfo();
-                    infoPedidosDisco();
+                    showDiskstats();
                     infoDisco(argv,optarg,optind);
 				}else{
 					validsOpt();
@@ -59,15 +58,14 @@ int main(int argc, char *argv[]) {
       		}
 	}
 	printf("\n");
-
     return 0;
 }
 /**
 * Funcion para ser llamada en cas de ingreso erroneo de opciones. Muestra en pantalla las opciones validas.
 */
 void validsOpt(){
-	printf("Las opciones ingresadas no son correctas\n");
-	printf("Opciones validas: -s , -l [intervalo] [tiempo]");
+	printf("Wrong choice!\n");
+	printf("Valid Options: -s , -l [interval] [time]");
 	printf("\n\n");
 }
 
@@ -92,6 +90,11 @@ void showCpuinfo(){
 	char cpuinfo2[BUFFSIZE+1];
 	char cpuinfo3[BUFFSIZE+1];
 	char str1 [20];
+	char str2 [20];
+	char str3 [20];
+	char str4 [20];
+	char str5 [20];
+	char str6 [20];
 
 	fd = fopen("/proc/cpuinfo","r");
 	fgets(cpuinfo1, BUFFSIZE+1, fd);
@@ -107,8 +110,8 @@ void showCpuinfo(){
     printf("Type: %s \n",str1);
 
     //Filtra el modelo, lo copia a str2 y la imprime
-    sscanf(cpuinfo2,"%*s %*s %*s %s", str1);
-    printf("Model: %s \n",str1);
+    sscanf(cpuinfo2,"%*s %*s %*s %s %s %s %s %s %s", str1, str2, str3, str4, str5, str6);
+    printf("Model: %s %s %s\n",str1, str2, str3, str5, str6);
 }
 
 /**
@@ -206,9 +209,7 @@ void showStats(){
 
     //Filtra el numero de procesos creados y los imprime
     printf("Processes created: %s\n", str5);
-
     printf("Context Changes: %s\n", str6);
-
 }
 /**
 * /proc/meminfo
@@ -244,13 +245,13 @@ void showMeminfo(){
 /**
 * Muestra la fecha y hora de inicio del sistema.
 */
-void initSystemDate(){
+void uptimeSystemDate(){
     FILE *in;
     extern FILE *popen();
     char buff[BUFFSIZE];
 
     in = popen("date -d \"`cut -f1 -d. /proc/uptime` seconds ago\"", "r");
-    printf("System init time: ");
+    printf("Uptime system date: ");
     while(fgets(buff, sizeof(buff), in)!=NULL){
         printf("%s", buff);
     }
@@ -260,91 +261,60 @@ pclose(in);
 /**
  * Muestra peticiones totales a disco
  */
-void infoPedidosDisco(){
-	char matched[256];
-	unsigned int lecturas, escrituras, pedidos;
+void showDiskstats(){
+	char buff[256];
+	unsigned int reads, writes, requests;
 
-	match("/proc/diskstats", matched, "sda");
-	sscanf(matched, "sda %u", &lecturas);
-	sscanf(matched, "sda %*u %*u %*u %*u %u", &escrituras);
-	pedidos = escrituras + lecturas;
-	printf("Cantidad de peticiones a disco: %u\n", pedidos);
-	return;
+	findStr("/proc/diskstats", buff, "sda");
+	sscanf(buff, "sda %u", &reads);
+	sscanf(buff, "sda %*u %*u %*u %*u %u", &writes);
+	requests = writes + reads;
+	printf("Disk loads: %u\n", requests);
 }
 
 /**
- * En matched, coloca la linea que comienza con la cadena matchStr.
+ * En matched coloca un puntero a la linea que comienza con la cadena especificada en matchStr.
  * @param filename Archivo donde se buscara la linea
  * @param matched Almacena la linea que comienza con la cadena matchStr.
  * @param matchStr Cadena a buscar.
  */
-void match(char* filename, char* matched, char* matchStr){
+void findStr(char* filename, char* matched, char* matchStr){
 	FILE* fd;
-	char* match = NULL;
+	char* findStr = NULL;
 	char buffer[500];
 	fd = fopen(filename,"r");
 
 	while(feof(fd)==0){
 		fgets(buffer, 500, fd);
-		match = strstr(buffer, matchStr);
-		if(match!=NULL)
+		findStr = strstr(buffer, matchStr);
+		if(findStr!=NULL)
 			break;
 	}
-
 	fclose(fd);
-	strcpy(matched,match);
-	return;
+	strcpy(matched,findStr);
 }
 
 /**
  * Obtiene informacion sobre el uso del disco del archivo /proc/loadavg
+ * de manera secuencial con parametros de tiempo definidos por el usuario.
  */
-void infoDisco(char **argv, char *argumento, int puntero){
-	FILE *archivo;
-	int intervalo, tiempo;
+void infoDisco(char **argv, char *arg, int pointer){
+	FILE *fd;
+	int interval, time;
 	char aux[BUFFSIZE];
-	float promedio;
+	float avg;
 
-	tiempo=atoi(*(argv+puntero));
-
-	while(tiempo>0){
-		if( (archivo=fopen("/proc/loadavg","r")) == NULL ){
-			printf("\nError al abrir el archivo: /proc/meminfo\n");
-			exit(1);
-		}
-
-		fscanf(archivo, "%s", aux);
-		promedio = atof(aux);
-		printf("\nPromedio de carga en el último minuto: %.2f",promedio);
-		intervalo=atoi(argumento);
-
-		printf("\n[Pausa de %d segundos]",intervalo);
-		printf("\n");
-		sleep(intervalo);
-		fclose(archivo);
-		tiempo=tiempo-intervalo;
+	time=atoi(*(argv+pointer));
+    printf("\nDisk load average for last minute: ");
+	while(time>0){
+		fd=fopen("/proc/loadavg","r");
+		fscanf(fd, "%s", aux);
+		avg = atof(aux);
+		printf("\n--> %.2f",avg);
+		interval=atoi(arg);
+		sleep(interval);
+		fclose(fd);
+		time=time-interval;
 	}
 }
-/**
- * Modifica parte de una cadena despues de un determinado caracter x
- * @param txt[BUFF] cadena a modificar
- * @param x caracter de limite
- */
 
-void parser(char txt[BUFFSIZE], char x){
-	int i=0, j=0;
-
-	while( txt[i] != x )
-	{
-		i++;
-	}
-
-	for(i; i<60; i++){
-		txt[j] = txt[i];
-		j++;
-	}
-
-	for(j; j<60; j++){
-		txt[j] = ' ';
-	}
-}

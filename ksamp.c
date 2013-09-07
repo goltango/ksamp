@@ -16,7 +16,7 @@ void parser(char txt[BUFFSIZE], char x);
 void uptimeSystemDate();
 void showDiskstats();
 void findStr(char* filename, char* matched, char* matchStr);
-void infoDisco(char **argv, char *argumento, int puntero);
+void showLoadavg(char **argv, char *argumento, int puntero);
 
 int main(int argc, char *argv[]) {
 	int opcion;
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
 					uptimeSystemDate();
                     showMeminfo();
                     showDiskstats();
-                    infoDisco(argv,optarg,optind);
+                    showLoadavg(argv,optarg,optind);
 				}else{
 					validsOpt();
 				}
@@ -298,7 +298,7 @@ void findStr(char* filename, char* matched, char* matchStr){
  * Obtiene informacion sobre el uso del disco del archivo /proc/loadavg
  * de manera secuencial con parametros de tiempo definidos por el usuario.
  */
-void infoDisco(char **argv, char *arg, int pointer){
+void showLoadavg(char **argv, char *arg, int pointer){
 	FILE *fd;
 	int interval, time;
 	char aux[BUFFSIZE];
